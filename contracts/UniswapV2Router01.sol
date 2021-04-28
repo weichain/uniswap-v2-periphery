@@ -1,7 +1,6 @@
 pragma solidity =0.5.4;
 
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol';
-// import '@uniswap/lib/contracts/libraries/TransferHelper.sol';
 
 import './libraries/TransferHelper.sol';
 import './libraries/UniswapV2Library.sol';
@@ -41,13 +40,6 @@ contract UniswapV2Router01 is IUniswapV2Router01 {
             (amountA, amountB) = (amountADesired, amountBDesired);
         } else {
             uint256 amountBOptimal = UniswapV2Library.quote(amountADesired, reserveA, reserveB);
-            // console.log('amountADesired  -------------->',amountADesired);
-            // console.log('reserveA        -------------->',reserveA);
-            // console.log('reserveB        -------------->',reserveB);
-
-            // console.log('amountB desired -------------->',amountBDesired);
-            // console.log('amountB optimal -------------->',amountBOptimal);
-            // console.log('amountB min     -------------->',amountBMin);
             if (amountBOptimal <= amountBDesired) {
                 require(amountBOptimal >= amountBMin, 'UniswapV2Router: INSUFFICIENT_B_AMOUNT');
                 (amountA, amountB) = (amountADesired, amountBOptimal);
