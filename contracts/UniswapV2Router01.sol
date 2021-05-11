@@ -10,308 +10,241 @@ import './interfaces/IWETH.sol';
 
 contract UniswapV2Router01 is IUniswapV2Router01 {
     address public factory;
-    address public WETH;
+    address public WHYDRA;
 
-    modifier ensure(uint256 deadline) {
-        require(deadline >= block.timestamp, 'UniswapV2Router: EXPIRED');
+    modifier ensure(uint deadline) {
+        require(deadline >= block.timestamp, 'HydraswapRouter: EXPIRED');
         _;
     }
 
-    constructor(address _factory, address _WETH) public {
+    constructor(address _factory, address _WHYDRA) public {
         factory = _factory;
-        WETH = _WETH;
+        WHYDRA = _WHYDRA;
     }
 
     // **** ADD LIQUIDITY ****
     function _addLiquidity(
         address tokenA,
         address tokenB,
-        uint256 amountADesired,
-        uint256 amountBDesired,
-        uint256 amountAMin,
-        uint256 amountBMin
-    ) private returns (uint256 amountA, uint256 amountB) {
+        uint amountADesired,
+        uint amountBDesired,
+        uint amountAMin,
+        uint amountBMin
+    ) private returns (uint amountA, uint amountB) {
         // create the pair if it doesn't exist yet
         if (IUniswapV2Factory(factory).getPair(tokenA, tokenB) == address(0)) {
             IUniswapV2Factory(factory).createPair(tokenA, tokenB);
         }
-        (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(factory, tokenA, tokenB);
+        (uint reserveA, uint reserveB) = UniswapV2Library.getReserves(factory, tokenA, tokenB);
         if (reserveA == 0 && reserveB == 0) {
             (amountA, amountB) = (amountADesired, amountBDesired);
         } else {
-            uint256 amountBOptimal = UniswapV2Library.quote(amountADesired, reserveA, reserveB);
+            uint amountBOptimal = UniswapV2Library.quote(amountADesired, reserveA, reserveB);
             if (amountBOptimal <= amountBDesired) {
-                require(amountBOptimal >= amountBMin, 'UniswapV2Router: INSUFFICIENT_B_AMOUNT');
+                require(amountBOptimal >= amountBMin, 'HydraswapRouter: INSUFFICIENT_B_AMOUNT');
                 (amountA, amountB) = (amountADesired, amountBOptimal);
             } else {
-                uint256 amountAOptimal = UniswapV2Library.quote(amountBDesired, reserveB, reserveA);
+                uint amountAOptimal = UniswapV2Library.quote(amountBDesired, reserveB, reserveA);
                 assert(amountAOptimal <= amountADesired);
-                require(amountAOptimal >= amountAMin, 'UniswapV2Router: INSUFFICIENT_A_AMOUNT');
+                require(amountAOptimal >= amountAMin, 'HydraswapRouter: INSUFFICIENT_A_AMOUNT');
                 (amountA, amountB) = (amountAOptimal, amountBDesired);
             }
         }
     }
-
+    
     function addLiquidity(
         address tokenA,
         address tokenB,
-        uint256 amountADesired,
-        uint256 amountBDesired,
-        uint256 amountAMin,
-        uint256 amountBMin,
+        uint amountADesired,
+        uint amountBDesired,
+        uint amountAMin,
+        uint amountBMin,
         address to,
-        uint256 deadline
-    )
-        external
-        ensure(deadline)
-        returns (
-            uint256 amountA,
-            uint256 amountB,
-            uint256 liquidity
-        )
-    {
+        uint deadline
+    ) external ensure(deadline) returns (uint amountA, uint amountB, uint liquidity) {
         (amountA, amountB) = _addLiquidity(tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin);
         address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
         TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA);
         TransferHelper.safeTransferFrom(tokenB, msg.sender, pair, amountB);
         liquidity = IUniswapV2Pair(pair).mint(to);
     }
-
-    function addLiquidityETH(
+    function addLiquidityHYDRA(
         address token,
-        uint256 amountTokenDesired,
-        uint256 amountTokenMin,
-        uint256 amountETHMin,
+        uint amountTokenDesired,
+        uint amountTokenMin,
+        uint amountHYDRAMin,
         address to,
-        uint256 deadline
-    )
-        external
-        payable
-        ensure(deadline)
-        returns (
-            uint256 amountToken,
-            uint256 amountETH,
-            uint256 liquidity
-        )
-    {
-        (amountToken, amountETH) = _addLiquidity(
+        uint deadline
+    ) external payable ensure(deadline) returns (uint amountToken, uint amountHYDRA, uint liquidity) {
+        (amountToken, amountHYDRA) = _addLiquidity(
             token,
-            WETH,
+            WHYDRA,
             amountTokenDesired,
             msg.value,
             amountTokenMin,
-            amountETHMin
+            amountHYDRAMin
         );
-        address pair = UniswapV2Library.pairFor(factory, token, WETH);
+        address pair = UniswapV2Library.pairFor(factory, token, WHYDRA);
         TransferHelper.safeTransferFrom(token, msg.sender, pair, amountToken);
 
-        address(IWETH(WETH)).call.value(amountETH)(abi.encode('deposit()'));
+        address(IWETH(WHYDRA)).call.value(amountHYDRA)(abi.encode("deposit()"));
 
-        assert(IWETH(WETH).transfer(pair, amountETH));
+        assert(IWETH(WHYDRA).transfer(pair, amountHYDRA));
         liquidity = IUniswapV2Pair(pair).mint(to);
-        if (msg.value > amountETH) TransferHelper.safeTransferETH(msg.sender, msg.value - amountETH); // refund dust eth, if any
+        if (msg.value > amountHYDRA) TransferHelper.safeTransferHYDRA(msg.sender, msg.value - amountHYDRA); // refund dust HYDRA, if any
     }
 
     // **** REMOVE LIQUIDITY ****
     function removeLiquidity(
         address tokenA,
         address tokenB,
-        uint256 liquidity,
-        uint256 amountAMin,
-        uint256 amountBMin,
+        uint liquidity,
+        uint amountAMin,
+        uint amountBMin,
         address to,
-        uint256 deadline
-    ) public ensure(deadline) returns (uint256 amountA, uint256 amountB) {
+        uint deadline
+    ) public ensure(deadline) returns (uint amountA, uint amountB) {
         address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
         IUniswapV2Pair(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
-        (uint256 amount0, uint256 amount1) = IUniswapV2Pair(pair).burn(to);
-        (address token0, ) = UniswapV2Library.sortTokens(tokenA, tokenB);
+        (uint amount0, uint amount1) = IUniswapV2Pair(pair).burn(to);
+        (address token0,) = UniswapV2Library.sortTokens(tokenA, tokenB);
         (amountA, amountB) = tokenA == token0 ? (amount0, amount1) : (amount1, amount0);
-        require(amountA >= amountAMin, 'UniswapV2Router: INSUFFICIENT_A_AMOUNT');
-        require(amountB >= amountBMin, 'UniswapV2Routser: INSUFFICIENT_B_AMOUNT');
+        require(amountA >= amountAMin, 'HydraswapRouter: INSUFFICIENT_A_AMOUNT');
+        require(amountB >= amountBMin, 'HydraswapRouter: INSUFFICIENT_B_AMOUNT');
     }
-
-    function removeLiquidityETH(
+    function removeLiquidityHYDRA(
         address token,
-        uint256 liquidity,
-        uint256 amountTokenMin,
-        uint256 amountETHMin,
+        uint liquidity,
+        uint amountTokenMin,
+        uint amountHYDRAMin,
         address to,
-        uint256 deadline
-    ) public ensure(deadline) returns (uint256 amountToken, uint256 amountETH) {
-        (amountToken, amountETH) = removeLiquidity(
+        uint deadline
+    ) public ensure(deadline) returns (uint amountToken, uint amountHYDRA) {
+        (amountToken, amountHYDRA) = removeLiquidity(
             token,
-            WETH,
+            WHYDRA,
             liquidity,
             amountTokenMin,
-            amountETHMin,
+            amountHYDRAMin,
             address(this),
             deadline
         );
         TransferHelper.safeTransfer(token, to, amountToken);
-        IWETH(WETH).withdraw(amountETH);
-        TransferHelper.safeTransferETH(to, amountETH);
+        IWETH(WHYDRA).withdraw(amountHYDRA);
+        TransferHelper.safeTransferHYDRA(to, amountHYDRA);
     }
 
     // **** SWAP ****
     // requires the initial amount to have already been sent to the first pair
-    function _swap(
-        uint256[] memory amounts,
-        address[] memory path,
-        address _to
-    ) private {
-        for (uint256 i; i < path.length - 1; i++) {
+    function _swap(uint[] memory amounts, address[] memory path, address _to) private {
+        for (uint i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
-            (address token0, ) = UniswapV2Library.sortTokens(input, output);
-            uint256 amountOut = amounts[i + 1];
-            (uint256 amount0Out, uint256 amount1Out) =
-                input == token0 ? (uint256(0), amountOut) : (amountOut, uint256(0));
+            (address token0,) = UniswapV2Library.sortTokens(input, output);
+            uint amountOut = amounts[i + 1];
+            (uint amount0Out, uint amount1Out) = input == token0 ? (uint(0), amountOut) : (amountOut, uint(0));
             address to = i < path.length - 2 ? UniswapV2Library.pairFor(factory, output, path[i + 2]) : _to;
-            IUniswapV2Pair(UniswapV2Library.pairFor(factory, input, output)).swap(
-                amount0Out,
-                amount1Out,
-                to,
-                new bytes(0)
-            );
+            IUniswapV2Pair(UniswapV2Library.pairFor(factory, input, output)).swap(amount0Out, amount1Out, to, new bytes(0));
         }
     }
-
     function swapExactTokensForTokens(
-        uint256 amountIn,
-        uint256 amountOutMin,
+        uint amountIn,
+        uint amountOutMin,
         address[] calldata path,
         address to,
-        uint256 deadline
-    ) external ensure(deadline) returns (uint256[] memory amounts) {
+        uint deadline
+    ) external ensure(deadline) returns (uint[] memory amounts) {
         amounts = UniswapV2Library.getAmountsOut(factory, amountIn, path);
-        require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
-        TransferHelper.safeTransferFrom(
-            path[0],
-            msg.sender,
-            UniswapV2Library.pairFor(factory, path[0], path[1]),
-            amounts[0]
-        );
+        require(amounts[amounts.length - 1] >= amountOutMin, 'HydraswapRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+        TransferHelper.safeTransferFrom(path[0], msg.sender, UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]);
         _swap(amounts, path, to);
     }
-
     function swapTokensForExactTokens(
-        uint256 amountOut,
-        uint256 amountInMax,
+        uint amountOut,
+        uint amountInMax,
         address[] calldata path,
         address to,
-        uint256 deadline
-    ) external ensure(deadline) returns (uint256[] memory amounts) {
+        uint deadline
+    ) external ensure(deadline) returns (uint[] memory amounts) {
         amounts = UniswapV2Library.getAmountsIn(factory, amountOut, path);
-        require(amounts[0] <= amountInMax, 'UniswapV2Router: EXCESSIVE_INPUT_AMOUNT');
-        TransferHelper.safeTransferFrom(
-            path[0],
-            msg.sender,
-            UniswapV2Library.pairFor(factory, path[0], path[1]),
-            amounts[0]
-        );
+        require(amounts[0] <= amountInMax, 'HydraswapRouter: EXCESSIVE_INPUT_AMOUNT');
+        TransferHelper.safeTransferFrom(path[0], msg.sender, UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]);
         _swap(amounts, path, to);
     }
-
-    function swapExactETHForTokens(
-        uint256 amountOutMin,
-        address[] calldata path,
-        address to,
-        uint256 deadline
-    ) external payable ensure(deadline) returns (uint256[] memory amounts) {
-        require(path[0] == WETH, 'UniswapV2Router: INVALID_PATH');
+    function swapExactHYDRAForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline)
+        external
+        
+        payable
+        ensure(deadline)
+        returns (uint[] memory amounts)
+    {
+        require(path[0] == WHYDRA, 'HydraswapRouter: INVALID_PATH');
         amounts = UniswapV2Library.getAmountsOut(factory, msg.value, path);
-        require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
-        address(IWETH(WETH)).call.value(amounts[0])(abi.encode('deposit()'));
-        assert(IWETH(WETH).transfer(UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]));
+        require(amounts[amounts.length - 1] >= amountOutMin, 'HydraswapRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+        address(IWETH(WHYDRA)).call.value(amounts[0])(abi.encode("deposit()"));
+        assert(IWETH(WHYDRA).transfer(UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]));
         _swap(amounts, path, to);
     }
-
-    function swapTokensForExactETH(
-        uint256 amountOut,
-        uint256 amountInMax,
-        address[] calldata path,
-        address to,
-        uint256 deadline
-    ) external ensure(deadline) returns (uint256[] memory amounts) {
-        require(path[path.length - 1] == WETH, 'UniswapV2Router: INVALID_PATH');
+    function swapTokensForExactHYDRA(uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
+        external
+        
+        ensure(deadline)
+        returns (uint[] memory amounts)
+    {
+        require(path[path.length - 1] == WHYDRA, 'HydraswapRouter: INVALID_PATH');
         amounts = UniswapV2Library.getAmountsIn(factory, amountOut, path);
-        require(amounts[0] <= amountInMax, 'UniswapV2Router: EXCESSIVE_INPUT_AMOUNT');
-        TransferHelper.safeTransferFrom(
-            path[0],
-            msg.sender,
-            UniswapV2Library.pairFor(factory, path[0], path[1]),
-            amounts[0]
-        );
+        require(amounts[0] <= amountInMax, 'HydraswapRouter: EXCESSIVE_INPUT_AMOUNT');
+        TransferHelper.safeTransferFrom(path[0], msg.sender, UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]);
         _swap(amounts, path, address(this));
-        IWETH(WETH).withdraw(amounts[amounts.length - 1]);
-        TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);
+        IWETH(WHYDRA).withdraw(amounts[amounts.length - 1]);
+        TransferHelper.safeTransferHYDRA(to, amounts[amounts.length - 1]);
     }
-
-    function swapExactTokensForETH(
-        uint256 amountIn,
-        uint256 amountOutMin,
-        address[] calldata path,
-        address to,
-        uint256 deadline
-    ) external ensure(deadline) returns (uint256[] memory amounts) {
-        require(path[path.length - 1] == WETH, 'UniswapV2Router: INVALID_PATH');
+    function swapExactTokensForHYDRA(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
+        external
+        
+        ensure(deadline)
+        returns (uint[] memory amounts)
+    {
+        require(path[path.length - 1] == WHYDRA, 'HydraswapRouter: INVALID_PATH');
         amounts = UniswapV2Library.getAmountsOut(factory, amountIn, path);
-        require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
-        TransferHelper.safeTransferFrom(
-            path[0],
-            msg.sender,
-            UniswapV2Library.pairFor(factory, path[0], path[1]),
-            amounts[0]
-        );
+        require(amounts[amounts.length - 1] >= amountOutMin, 'HydraswapRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+        TransferHelper.safeTransferFrom(path[0], msg.sender, UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]);
         _swap(amounts, path, address(this));
-        IWETH(WETH).withdraw(amounts[amounts.length - 1]);
-        TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);
+        IWETH(WHYDRA).withdraw(amounts[amounts.length - 1]);
+        TransferHelper.safeTransferHYDRA(to, amounts[amounts.length - 1]);
     }
-
-    function swapETHForExactTokens(
-        uint256 amountOut,
-        address[] calldata path,
-        address to,
-        uint256 deadline
-    ) external payable ensure(deadline) returns (uint256[] memory amounts) {
-        require(path[0] == WETH, 'UniswapV2Router: INVALID_PATH');
+    function swapHYDRAForExactTokens(uint amountOut, address[] calldata path, address to, uint deadline)
+        external
+        
+        payable
+        ensure(deadline)
+        returns (uint[] memory amounts)
+    {
+        require(path[0] == WHYDRA, 'HydraswapRouter: INVALID_PATH');
         amounts = UniswapV2Library.getAmountsIn(factory, amountOut, path);
-        require(amounts[0] <= msg.value, 'UniswapV2Router: EXCESSIVE_INPUT_AMOUNT');
-        address(IWETH(WETH)).call.value(amounts[0])(abi.encode('deposit()'));
-        assert(IWETH(WETH).transfer(UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]));
+        require(amounts[0] <= msg.value, 'HydraswapRouter: EXCESSIVE_INPUT_AMOUNT');
+        address(IWETH(WHYDRA)).call.value(amounts[0])(abi.encode("deposit()"));
+        assert(IWETH(WHYDRA).transfer(UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]));
         _swap(amounts, path, to);
-        if (msg.value > amounts[0]) TransferHelper.safeTransferETH(msg.sender, msg.value - amounts[0]); // refund dust eth, if any
+        if (msg.value > amounts[0]) TransferHelper.safeTransferHYDRA(msg.sender, msg.value - amounts[0]); // refund dust HYDRA, if any
     }
 
-    function quote(
-        uint256 amountA,
-        uint256 reserveA,
-        uint256 reserveB
-    ) public pure returns (uint256 amountB) {
+    function quote(uint amountA, uint reserveA, uint reserveB) public pure returns (uint amountB) {
         return UniswapV2Library.quote(amountA, reserveA, reserveB);
     }
 
-    function getAmountOut(
-        uint256 amountIn,
-        uint256 reserveIn,
-        uint256 reserveOut
-    ) public pure returns (uint256 amountOut) {
+    function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut) public pure returns (uint amountOut) {
         return UniswapV2Library.getAmountOut(amountIn, reserveIn, reserveOut);
     }
 
-    function getAmountIn(
-        uint256 amountOut,
-        uint256 reserveIn,
-        uint256 reserveOut
-    ) public pure returns (uint256 amountIn) {
+    function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut) public pure returns (uint amountIn) {
         return UniswapV2Library.getAmountOut(amountOut, reserveIn, reserveOut);
     }
 
-    function getAmountsOut(uint256 amountIn, address[] memory path) public view returns (uint256[] memory amounts) {
+    function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts) {
         return UniswapV2Library.getAmountsOut(factory, amountIn, path);
     }
 
-    function getAmountsIn(uint256 amountOut, address[] memory path) public view returns (uint256[] memory amounts) {
+    function getAmountsIn(uint amountOut, address[] memory path) public view returns (uint[] memory amounts) {
         return UniswapV2Library.getAmountsIn(factory, amountOut, path);
     }
 }
