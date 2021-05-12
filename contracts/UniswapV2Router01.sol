@@ -7,6 +7,7 @@ import './libraries/UniswapV2Library.sol';
 import './interfaces/IUniswapV2Router01.sol';
 import './interfaces/IERC20.sol';
 import './interfaces/IWETH.sol';
+// import 'hardhat/console.sol';
 
 contract UniswapV2Router01 is IUniswapV2Router01 {
     address public factory;
@@ -15,6 +16,10 @@ contract UniswapV2Router01 is IUniswapV2Router01 {
     modifier ensure(uint deadline) {
         require(deadline >= block.timestamp, 'HydraswapRouter: EXPIRED');
         _;
+    }
+
+    function() external payable {
+        assert(msg.sender == WHYDRA); // only accept HYDRA via fallback from the WHYDRA contract
     }
 
     constructor(address _factory, address _WHYDRA) public {
@@ -129,6 +134,7 @@ contract UniswapV2Router01 is IUniswapV2Router01 {
             address(this),
             deadline
         );
+        // console.log('in Contract  amountHYDRA ---------------->', amountHYDRA);
         TransferHelper.safeTransfer(token, to, amountToken);
         IWETH(WHYDRA).withdraw(amountHYDRA);
         TransferHelper.safeTransferHYDRA(to, amountHYDRA);
