@@ -7,7 +7,6 @@ import './libraries/UniswapV2Library.sol';
 import './interfaces/IUniswapV2Router01.sol';
 import './interfaces/IERC20.sol';
 import './interfaces/IWETH.sol';
-// import 'hardhat/console.sol';
 
 contract UniswapV2Router01 is IUniswapV2Router01 {
     address public factory;
@@ -134,7 +133,6 @@ contract UniswapV2Router01 is IUniswapV2Router01 {
             address(this),
             deadline
         );
-        // console.log('in Contract  amountHYDRA ---------------->', amountHYDRA);
         TransferHelper.safeTransfer(token, to, amountToken);
         IWETH(WHYDRA).withdraw(amountHYDRA);
         TransferHelper.safeTransferHYDRA(to, amountHYDRA);

@@ -29,9 +29,9 @@ contract ExampleSwapToPrice {
         address to,
         uint256 deadline
     ) public {
-        require(tokenAAmountIn != 0 , "ExampleSwapToPrice: TOKEN_A - ZERO_AMOUNT");
-        require(tokenBMinOut != 0, "ExampleSwapToPrice: TOKEN_B - ZERO_AMOUNT_MIN");
-        
+        require(tokenAAmountIn != 0, 'ExampleSwapToPrice: TOKEN_A - ZERO_AMOUNT');
+        require(tokenBMinOut != 0, 'ExampleSwapToPrice: TOKEN_B - ZERO_AMOUNT_MIN');
+
         TransferHelper.safeTransferFrom(tokenA, msg.sender, address(this), tokenAAmountIn);
         TransferHelper.safeApprove(tokenA, address(router), tokenAAmountIn);
 
@@ -39,12 +39,6 @@ contract ExampleSwapToPrice {
         path[0] = tokenA;
         path[1] = tokenB;
 
-        router.swapExactTokensForTokens(
-            tokenAAmountIn,
-            tokenBMinOut,
-            path,
-            to,
-            deadline
-        );
+        router.swapExactTokensForTokens(tokenAAmountIn, tokenBMinOut, path, to, deadline);
     }
 }
