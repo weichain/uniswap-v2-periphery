@@ -1,4 +1,4 @@
-pragma solidity >=0.5.0;
+pragma solidity =0.5.4;
 
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol';
@@ -50,7 +50,7 @@ library UniswapV2LiquidityMathLibrary {
         // first get reserves before the swap
         (reserveA, reserveB) = UniswapV2Library.getReserves(factory, tokenA, tokenB);
 
-        require(reserveA > 0 && reserveB > 0, 'UniswapV2ArbitrageLibrary: ZERO_PAIR_RESERVES');
+        require(reserveA > 0 && reserveB > 0, 'HydraswapArbitrageLibrary: ZERO_PAIR_RESERVES');
 
         // then compute how much to swap to arb to the true price
         (bool aToB, uint256 amountIn) = computeProfitMaximizingTrade(truePriceTokenA, truePriceTokenB, reserveA, reserveB);

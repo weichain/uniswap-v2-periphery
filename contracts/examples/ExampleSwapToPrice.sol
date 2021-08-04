@@ -1,9 +1,9 @@
-pragma solidity =0.6.6;
+pragma solidity =0.5.4;
 
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
 import '@uniswap/lib/contracts/libraries/Babylonian.sol';
-import '@uniswap/lib/contracts/libraries/TransferHelper.sol';
 
+import '../libraries/TransferHelper.sol';
 import '../libraries/UniswapV2LiquidityMathLibrary.sol';
 import '../interfaces/IERC20.sol';
 import '../interfaces/IUniswapV2Router01.sol';
@@ -13,62 +13,35 @@ import '../libraries/UniswapV2Library.sol';
 contract ExampleSwapToPrice {
     using SafeMath for uint256;
 
-    IUniswapV2Router01 public immutable router;
-    address public immutable factory;
+    IUniswapV2Router01 public router;
+    address public factory;
 
     constructor(address factory_, IUniswapV2Router01 router_) public {
         factory = factory_;
         router = router_;
     }
 
-    // swaps an amount of either token such that the trade is profit-maximizing, given an external true price
-    // true price is expressed in the ratio of token A to token B
-    // caller must approve this contract to spend whichever token is intended to be swapped
     function swapToPrice(
         address tokenA,
         address tokenB,
-        uint256 truePriceTokenA,
-        uint256 truePriceTokenB,
-        uint256 maxSpendTokenA,
-        uint256 maxSpendTokenB,
+        uint256 tokenAAmountIn,
+        uint256 tokenBMinOut,
         address to,
         uint256 deadline
     ) public {
-        // true price is expressed as a ratio, so both values must be non-zero
-        require(truePriceTokenA != 0 && truePriceTokenB != 0, "ExampleSwapToPrice: ZERO_PRICE");
-        // caller can specify 0 for either if they wish to swap in only one direction, but not both
-        require(maxSpendTokenA != 0 || maxSpendTokenB != 0, "ExampleSwapToPrice: ZERO_SPEND");
-
-        bool aToB;
-        uint256 amountIn;
-        {
-            (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(factory, tokenA, tokenB);
-            (aToB, amountIn) = UniswapV2LiquidityMathLibrary.computeProfitMaximizingTrade(
-                truePriceTokenA, truePriceTokenB,
-                reserveA, reserveB
-            );
-        }
-
-        require(amountIn > 0, 'ExampleSwapToPrice: ZERO_AMOUNT_IN');
-
-        // spend up to the allowance of the token in
-        uint256 maxSpend = aToB ? maxSpendTokenA : maxSpendTokenB;
-        if (amountIn > maxSpend) {
-            amountIn = maxSpend;
-        }
-
-        address tokenIn = aToB ? tokenA : tokenB;
-        address tokenOut = aToB ? tokenB : tokenA;
-        TransferHelper.safeTransferFrom(tokenIn, msg.sender, address(this), amountIn);
-        TransferHelper.safeApprove(tokenIn, address(router), amountIn);
+        require(tokenAAmountIn != 0 , "ExampleSwapToPrice: TOKEN_A - ZERO_AMOUNT");
+        require(tokenBMinOut != 0, "ExampleSwapToPrice: TOKEN_B - ZERO_AMOUNT_MIN");
+        
+        TransferHelper.safeTransferFrom(tokenA, msg.sender, address(this), tokenAAmountIn);
+        TransferHelper.safeApprove(tokenA, address(router), tokenAAmountIn);
 
         address[] memory path = new address[](2);
-        path[0] = tokenIn;
-        path[1] = tokenOut;
+        path[0] = tokenA;
+        path[1] = tokenB;
 
         router.swapExactTokensForTokens(
-            amountIn,
-            0, // amountOutMin: we can skip computing this number because the math is tested
+            tokenAAmountIn,
+            tokenBMinOut,
             path,
             to,
             deadline
